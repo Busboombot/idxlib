@@ -27,7 +27,17 @@ class IDXPinLimit :  public IDXLimit {
         IDXPinLimit(int pin);
       
         void begin();
-
+        
+        int limitValue();
+        
+        bool isInLimit();
+    
+    private:
+        
+        uint8_t pin;
+        
+        uint8_t p_value;
+    
 };
 
 class IDXMcpLimit :  public IDXLimit {
@@ -41,13 +51,14 @@ class IDXMcpLimit :  public IDXLimit {
         int limitValue();
         
         bool isInLimit();
+    
     private:
         
-        int pin;
+        uint8_t pin;
         
-        int mcp_address;
+        uint8_t mcp_address;
         
-        int p_value;
+        uint8_t p_value;
 };
 
 
