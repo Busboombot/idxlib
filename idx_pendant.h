@@ -38,7 +38,7 @@ class IDXPendant {
 
   static const int num_switches;
 
-  void setup(); // Initialize the input and output pins
+  void begin(); // Initialize the input and output pins
   
   bool run_once(); // Scan once and record which switches are set
   

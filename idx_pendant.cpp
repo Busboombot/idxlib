@@ -38,7 +38,7 @@ IDXPendant::IDXPendant() {
 
 // the setup function runs once when you press reset or power the board
 
-void IDXPendant::setup() {
+void IDXPendant::begin() {
   
   // initialize digital pin 13 as an output.
   for (int i = 0 ; i < NUM_OUT_PINS; i++){
@@ -66,14 +66,11 @@ bool IDXPendant::run_once() {
   
   for (int i = 0 ; i < NUM_OUT_PINS; i++){
     digitalWrite(this->outpins[i], HIGH);  
-    delay(1); // Delay needed to get out ping to stabilize
+    delayMicroseconds(50); // Delay needed to get out ping to stabilize
     for (int j = 0 ; j < NUM_IN_PINS; j++){
         if (digitalRead(this->inpins[j])){
           
           switch_set_count++;
-          //Serial.print(this->outpins[i],DEC);
-          //Serial.print("->");
-          //Serial.println(this->inpins[j],DEC);
           
           switch (i+j*8) {
             case 4: SET_SW_UP(2); break; 
@@ -114,7 +111,7 @@ bool IDXPendant::run_once() {
         }
     }
     digitalWrite(this->outpins[i], LOW);  
-    delay(1);  // Delay needed to get out ping to stabilize
+    delayMicroseconds(50); // Delay needed to get out ping to stabilize
   }
 
   int ret_val = (this->last_swbits_ups != swbits_ups || this->last_swbits_downs != swbits_downs);
