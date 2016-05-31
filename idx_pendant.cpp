@@ -66,7 +66,7 @@ bool IDXPendant::run_once() {
   
   for (int i = 0 ; i < NUM_OUT_PINS; i++){
     digitalWrite(this->outpins[i], HIGH);  
-    delayMicroseconds(50); // Delay needed to get out ping to stabilize
+    delayMicroseconds(10); // Delay needed to get out ping to stabilize
     for (int j = 0 ; j < NUM_IN_PINS; j++){
         if (digitalRead(this->inpins[j])){
           
@@ -111,7 +111,7 @@ bool IDXPendant::run_once() {
         }
     }
     digitalWrite(this->outpins[i], LOW);  
-    delayMicroseconds(50); // Delay needed to get out ping to stabilize
+    delayMicroseconds(10); // Delay needed to get out ping to stabilize
   }
 
   int ret_val = (this->last_swbits_ups != swbits_ups || this->last_swbits_downs != swbits_downs);
