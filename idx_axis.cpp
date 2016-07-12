@@ -83,7 +83,7 @@ void IDXAxis::startTick(int tick) {
     
     this->tick = tick;
     
-    if (this->stepPatterns[this->patternLine][this->tick & B11111]){
+    if (this->stepPatterns[this->patternLine][this->tick & B11111]) {
         fastSet(this->stepPin);
     }
 
