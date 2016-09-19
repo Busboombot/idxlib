@@ -8,6 +8,8 @@
 #include "Arduino.h"
 #include <stdint.h>
 
+#define IDX_NUM_SWITCHES 17
+
 #define IDX_SW_SPEED 1
 #define IDX_SW_TOOL 2
 #define IDX_SW_AXIS0 3
@@ -29,36 +31,36 @@
 #define IDX_SW_POS_TOP 2
 #define IDX_SW_POS_MID 1
 #define IDX_SW_POS_BOTTOM 0
+#define IDX_SW_POS_INVALID -1
 
 class IDXPendant {
 
   public:
 
-  IDXPendant();
+      IDXPendant();
 
-  static const int num_switches;
+      static const int num_switches;
 
-  void begin(); // Initialize the input and output pins
+      void begin(); // Initialize the input and output pins
   
-  bool run_once(); // Scan once and record which switches are set
+      bool run_once(); // Scan once and record which switches are set
   
-  void print_serial(); // Write the two switch bit values to the serial port.
-  
-  int return_up(); // Return the binary values for all switches in the up position
-  
-  int return_down(); // Return the binary values for all switches in the down position
-  
-  int sw_pos(int switch_n); // Return the position of a switch
+      int sw_pos(int switch_n); // Return the position of a switch
+
+      char sw_pos_name(int switch_n); // Return the position of a switch
+
+      char* outstr(); // Return the encoded output string
 
   private:
 
     static const int outpins[];
     static const int inpins[];
 
-    unsigned long swbits_ups; // bit mask of switches that are in the up position
-    unsigned long swbits_downs; // bit mask of switches that are in the down position
-    unsigned long last_swbits_ups; 
-    unsigned long last_swbits_downs; 
+    static const char sw_names[];
+    static const char sw_nulls[];
+
+    uint8_t switch_positions[IDX_NUM_SWITCHES] = {IDX_SW_POS_MID};
+    uint8_t last_switch_positions[IDX_NUM_SWITCHES] = {IDX_SW_POS_MID};
     
     uint8_t switch_set_count; // number of switches set per loop 
     uint8_t last_switch_set_count;
