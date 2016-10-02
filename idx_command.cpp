@@ -6,8 +6,6 @@
 #include "CRC32.h"
 
 
-
-
 // Wait for a header sync string, then read the entire header. 
 int IDXCommandBuffer::run(){
     
@@ -26,7 +24,6 @@ int IDXCommandBuffer::run(){
             } else{
                 buf_pos = 0;
             }
-            Serial.print(c);
        
         } else {
             
@@ -34,24 +31,18 @@ int IDXCommandBuffer::run(){
             
             buf_pos++;
             
-            //Serial.print(buf_pos-1);Serial.print(" ");
-            //Serial.print((uint8_t)c);Serial.print(" ");
-            //Serial.println(*(uint8_t*)(((uint8_t*)last_command)+buf_pos-1) );
-            
             if (buf_pos == sizeof(struct command)){
                 
                 uint32_t crc  = CRC32::checksum( (const uint8_t*)last_command, 
-                                             sizeof(*last_command) - sizeof(last_command->crc));
+                sizeof(*last_command) - sizeof(last_command->crc));
                  
-                
-                Serial.println(crc);
                 if (crc == last_command->crc){
-                    Serial.println("ACK");
                     commands.add(last_command);
                     sendResponse(*last_command, IDX_COMMAND_ACK );
+                    //Serial.print("ACK ");Serial.println(last_command->seq);
                     last_command = new command();
+                    
                 } else {
-                    Serial.println("nack");
                     sendResponse(*last_command, IDX_COMMAND_NACK );
                 }
            
