@@ -10,6 +10,7 @@
 int IDXCommandBuffer::run(){
     
     if(ser.available()){
+        startCharRead();
         
         char c =  ser.read();
         
@@ -38,34 +39,22 @@ int IDXCommandBuffer::run(){
                  
                 if (crc == last_command->crc){
                     commands.add(last_command);
-                    sendResponse(*last_command, IDX_COMMAND_ACK );
+                    sendAck(*last_command);
+                    resetCharReadTimes();
                     //Serial.print("ACK ");Serial.println(last_command->seq);
                     last_command = new command();
                     
                 } else {
-                    sendResponse(*last_command, IDX_COMMAND_NACK );
+                    sendNack(*last_command);
                 }
            
                 buf_pos = 0;
             }
         }
+        endCharRead();
     }
     
     return buf_pos;
-}
-
-void IDXCommandBuffer::send(struct command & command){     
-    
-    uint32_t crc  = CRC32::checksum( (const uint8_t*)&command, 
-                                 sizeof(*last_command) - sizeof(last_command->crc));
-          
-    ser.write( (uint8_t*)&command, sizeof(struct command));
-}
-
-void IDXCommandBuffer::sendResponse(struct command & command, int code){ 
-    response.seq = command.seq;
-    response.code = code;         
-    send(response);
 }
 
 
@@ -92,7 +81,7 @@ uint16_t fletcher16( uint8_t const *data, size_t bytes )
 }
 
 /*
-# Nasty hack based on 
+# For python, a nasty hack based on 
 # Wikipedia: https://en.wikipedia.org/wiki/Fletcher%27s_checksum
 def fletcher16( data ):
 
