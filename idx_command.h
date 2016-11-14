@@ -9,7 +9,7 @@
 #include <CRC32.h>
 
 #define IDX_COMMAND_NACK 0  // Failed to read payload
-#define IDX_COMMAND_ACK 1   // Payload successfully stored in meggage list
+#define IDX_COMMAND_ACK 1   // Payload successfully stored in message list
 #define IDX_COMMAND_DONE 2  // Command completed
 #define IDX_COMMAND_APOSITION 10
 #define IDX_COMMAND_RPOSITION 11
@@ -19,22 +19,21 @@
 
 #define N_AXES 6
 
-// A Header packet that preceedes all commands, and also serves as
-// ACK and NACK
-
-struct diagnostics {
-
-};
 
 struct command {
     byte sync[4] = {'I','D','X','C'}; // 4
     uint16_t code = 0; // command code // 2
     uint16_t seq = 0; // Packet sequence //2
-    int32_t directions =0 ; // Direction bits // 4
-    uint16_t ticks[N_AXES] = {0,0,0,0,0,0}; 
-    uint16_t steps[N_AXES] = {0,0,0,0,0,0};  // 12
+    uint32_t segment_time = 0; // total segment time, in microseconds
+    // Acceleration step number numbers
+    long n[N_AXES] = {0,0,0,0,0,0};  // 12 
+    // Number of steps in which to reach target velocity
+    long stepLeft[N_AXES] = {0,0,0,0,0,0};  // 12 Step numbers
+    // Interval delay
+    float cn[N_AXES] = {0,0,0,0,0,0};  // 12
     uint32_t crc = 0; // Payload CRC // 4
 }; // 40
+
 
 struct response {
     byte sync[4] = {'I','D','X','C'};  // 4 

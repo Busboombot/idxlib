@@ -5,7 +5,6 @@
 #include <Arduino.h>
 #include "CRC32.h"
 
-
 // Wait for a header sync string, then read the entire header. 
 int IDXCommandBuffer::run(){
     
