@@ -23,16 +23,16 @@
 struct command {
     byte sync[4] = {'I','D','X','C'}; // 4
     uint16_t code = 0; // command code // 2
-    uint16_t seq = 0; // Packet sequence //2
-    uint32_t segment_time = 0; // total segment time, in microseconds
+    uint16_t seq = 0; // Packet sequence // 2
+    uint32_t segment_time = 0; // total segment time, in microseconds 4
     // Acceleration step number numbers
-    long n[N_AXES] = {0,0,0,0,0,0};  // 12 
+    long n[N_AXES] = {0,0,0,0,0,0};  // 24
     // Number of steps in which to reach target velocity
-    long stepLeft[N_AXES] = {0,0,0,0,0,0};  // 12 Step numbers
+    long stepLeft[N_AXES] = {0,0,0,0,0,0};  // 24 Step numbers
     // Interval delay
-    float cn[N_AXES] = {0,0,0,0,0,0};  // 12
+    float cn[N_AXES] = {0,0,0,0,0,0};  // 24
     uint32_t crc = 0; // Payload CRC // 4
-}; // 40
+}; // 88
 
 
 struct response {

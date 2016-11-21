@@ -10,6 +10,22 @@
 
 class IDXStepper
 {
+    
+    
+private:
+
+    uint8_t  stepPin;
+    uint8_t directionPin;
+
+    byte direction; 
+    uint32_t stepsLeft;
+    uint32_t lastTime;
+   
+    uint32_t position = 0
+   
+    long n; // Step counter for interval calculations
+    float cn; // Interval, in microseconds
+    
 public:
 
     typedef enum
@@ -19,13 +35,10 @@ public:
     } Direction;
     
 
-
-    IDXStepper(uint8_t stepPin, uint8_t directionPin) {
+    IDXStepper(uint8_t stepPin, uint8_t directionPin) 
+        : stepPin(stepPin), directionPin(directionPin) {
     
-        direction = CCW;
-
-        stepPin = stepPin;
-        directionPin = directionPin;
+        direction = CW;
 
         lastTime = 0;
 
@@ -37,24 +50,33 @@ public:
 
     }
     
+
     
-    inline void setDir(Direction dir) {
-        if (dir){
+    inline void setParams(long n, float cn, long stepsLeft){
+        this->stepsLeft = stepsLeft;
+        this->direction = (stepsLeft > 0) ? CW : ((stepsLeft < 0) ? CCW: 0);
+        this->n = n;
+        this->cn = cn;
+    
+        if (this->direction == CW ){
             fastSet(directionPin);
         } else {
             fastClear(directionPin);
         }
+    
     }
     
-    inline void setParams(long n, float cn, long stepsLeft){
-        this->stepsLeft = stepsLeft;
-        this->direction = (stepsLeft > 0) ? 1 : ((stepsLeft < 0) ? -1 : 0);
-        this->n = n;
-        this->cn = cn;
+    inline uint32_t getStepsLeft(){
+        return stepsLeft;
     }
     
-
+    inline uint32_t getPosition(){
+        return position;
+    }
+    
+    
     inline long step(uint32_t now){
+        
         
         if ( stepsLeft != 0 && ( (unsigned long)(now - lastTime)   > cn) ) {
             
@@ -66,6 +88,7 @@ public:
             fastSet(stepPin);
             lastTime = now;
             
+            position += direction;
 
         }
         
@@ -74,7 +97,7 @@ public:
     
     //Set the step line to low
     inline void clearStep(){
-        
+
         fastClear(stepPin);
         
     }
@@ -83,18 +106,6 @@ public:
 protected:
 
 
-
-private:
-
-    uint8_t  stepPin;
-    uint8_t directionPin;
-
-    byte direction; 
-    long stepsLeft;
-    uint32_t lastTime;
-   
-    long n; // Step counter for interval calculations
-    float cn; // Interval, in microseconds
 
 
 
