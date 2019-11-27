@@ -1,12 +1,17 @@
 // Structures for movement commands
 
+
 #ifndef idx_command_h
 #define idx_command_h
+#if defined (__arm__) && defined (__SAM3X8E__) // Arduino Due compatible
 
 #include <Arduino.h>
 #include <limits.h>
 #include <LinkedList.h>  // https://github.com/ivanseidel/LinkedList
 #include <CRC32.h>
+
+// TODO! Consider using COBS for encoding packets
+// https://en.wikipedia.org/wiki/Consistent_Overhead_Byte_Stuffing
 
 #define IDX_COMMAND_NACK 0  // Failed to read payload
 #define IDX_COMMAND_ACK 1   // Payload successfully stored in message list
@@ -19,39 +24,43 @@
 
 #define N_AXES 6
 
+// There is a practical minimum of 25 us per step == 40Ks/s
+// If segment time is max of .065s, then max steps per segment is
+// 2,600. With 24 bits, max segment time is 16sec, but is sensibly 
+// capped at .82s, or 2**15s. Either way, a segment steps can be signed 16 bits. 
 
 struct command {
-    byte sync[4] = {'I','D','X','C'}; // 4
-    uint16_t code = 0; // command code // 2
+    byte sync[2] = {'I','D'}; // 2
     uint16_t seq = 0; // Packet sequence // 2
-    uint32_t segment_time = 0; // total segment time, in microseconds 4
-    // Acceleration step number numbers
-    long n[N_AXES] = {0,0,0,0,0,0};  // 24
-    // Number of steps in which to reach target velocity
-    long stepLeft[N_AXES] = {0,0,0,0,0,0};  // 24 Step numbers
-    // Interval delay
-    float cn[N_AXES] = {0,0,0,0,0,0};  // 24
+    uint16_t code = 0; // command code // 2
+    uint16_t pad = 0xBEEF; // padding // 2
+    uint32_t segment_time = 0; // total segment time, in microseconds // 4
+    int16_t v0[6] = {0,0,0,0,0,0}; // Initial segment velocity, in steps per second // 12
+    int16_t v1[6] = {0,0,0,0,0,0}; // Final segment velocity // 12
+    int32_t steps[6] = {0,0,0,0,0,0}; // number of steps in segment // 24
+
     uint32_t crc = 0; // Payload CRC // 4
-}; // 88
+}; // 64
 
 
 struct response {
-    byte sync[4] = {'I','D','X','C'};  // 4 
+    byte sync[2] = {'I','D'};  // 2 
+    uint16_t seq = 0; // Packet sequence // 2
     uint16_t code = 0; // command code // 2
-    uint16_t seq = 0; // Packet sequence //2
-    
     uint16_t queue_size; // 2
+    uint32_t queue_time; // 4
     uint16_t queue_min_seq; // 2
     uint16_t min_char_read_time; // 2
     uint16_t max_char_read_time; // 2
     uint16_t min_loop_time; // 2
     uint16_t max_loop_time; // 2
-    // 20 
-    int32_t steps[N_AXES] = {0,0,0,0,0,0};  // 24
+    uint16_t padding = 0xBEEF; // 2
+    // 24
     int16_t encoder_diffs[N_AXES] = {0,0,0,0,0,0}; // 12
+    int32_t steps[N_AXES] = {0,0,0,0,0,0};  // 24
     
     uint32_t crc = 0; // Payload CRC // 4
-}; // 60
+}; // 64
 
 
 /*
@@ -86,6 +95,8 @@ private:
     
     struct response cmd_response = {}; 
     
+    uint32_t queue_time = 0; // Total time of commands on Queue
+    
     uint32_t loop_start;
     uint32_t char_start;
     
@@ -114,7 +125,9 @@ public:
             return 0 ;
         }
         
-        return commands.shift();
+        struct command * cmd =  commands.shift();
+        queue_time -= cmd->segment_time;
+        return cmd;
         
     }
     
@@ -138,10 +151,14 @@ public:
         
         response.seq = seq;
         response.code = code;  
+        response.queue_time = queue_time;
+        //Serial.print("Send #");Serial.print(response.seq);Serial.print(" ");Serial.println(response.code);
         
         uint32_t crc  = CRC32::checksum( (const uint8_t*)&response, 
                                      sizeof(response) - sizeof(response.crc));
           
+        response.crc = crc;
+                                     
         ser.write( (uint8_t*)&response, sizeof(struct response));
 
     }
@@ -179,7 +196,7 @@ public:
     inline void sendNack(struct command & command){ 
         cmd_response.queue_size = (uint16_t)size();
         cmd_response.queue_min_seq = queue_min_seq();
-        sendResponse(cmd_response, command.seq, IDX_COMMAND_ACK);
+        sendResponse(cmd_response, command.seq, IDX_COMMAND_NACK);
     }
 
     inline void sendDone(struct command & command){ 
@@ -194,6 +211,18 @@ public:
         }
     }
     
+    inline void setPositions(int32_t pos0,int32_t pos1,int32_t pos2,int32_t pos3,int32_t pos4,int32_t pos5){
+        cmd_response.steps[0] = pos0;
+        cmd_response.steps[1] = pos1;
+        cmd_response.steps[2] = pos2;
+        cmd_response.steps[3] = pos3;
+        cmd_response.steps[4] = pos4;
+        cmd_response.steps[5] = pos5;
+    }
+    
+    inline uint32_t getQueueTime() {
+        return queue_time;
+    }
 };
 
 
@@ -219,5 +248,7 @@ class IDXCommandPort {
         
     
 };
-    
+#endif // #ifdef _SAM3XA_
 #endif
+
+

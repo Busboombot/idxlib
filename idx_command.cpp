@@ -1,6 +1,6 @@
 
 // Read a movement command from the serial port
-
+#if defined (__arm__) && defined (__SAM3X8E__) // Arduino Due compatible
 #include "idx_command.h"
 #include <Arduino.h>
 #include "CRC32.h"
@@ -38,6 +38,7 @@ int IDXCommandBuffer::run(){
                  
                 if (crc == last_command->crc){
                     commands.add(last_command);
+                    queue_time += last_command->segment_time;
                     sendAck(*last_command);
                     resetCharReadTimes();
                     //Serial.print("ACK ");Serial.println(last_command->seq);
@@ -45,6 +46,7 @@ int IDXCommandBuffer::run(){
                     
                 } else {
                     sendNack(*last_command);
+                    //Serial.print("NACK ");Serial.println(last_command->seq);
                 }
            
                 buf_pos = 0;
@@ -109,3 +111,5 @@ def fletcher16( data ):
     sum2 = (sum2 & 0xff) + (sum2 >> 8)
     return sum2 << 8 | sum1;
 */
+
+#endif // _SAM3XA_
