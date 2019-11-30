@@ -4,17 +4,22 @@
 #include "idx_command.h"
 #include <Arduino.h>
 #include "CRC32.h"
+#include "fastset.h"
+
+#include "debug.h"
+
 
 // Wait for a header sync string, then read the entire header. 
 int IDXCommandBuffer::run(){
+
     
     if(ser.available()){
+        fastDebugSet(CMD_RUN_TICK_PIN);
         startCharRead();
         
         char c =  ser.read();
         
         if (buf_pos < sizeof(last_command->sync)) {
-           
             // When reading the sync string, ensure that each additional char in 
             // the buffer equals the one in the same position in the sync str. 
             // If not, the characters read so far aren't sync chars, so start over. 
@@ -32,17 +37,25 @@ int IDXCommandBuffer::run(){
             buf_pos++;
             
             if (buf_pos == sizeof(struct command)){
+                // This section is slow, about 90us on a Due
                 
+               
+                // Computing the CRC takes about 30us
                 uint32_t crc  = CRC32::checksum( (const uint8_t*)last_command, 
-                sizeof(*last_command) - sizeof(last_command->crc));
+                                                 sizeof(*last_command) - sizeof(last_command->crc));
+                
                  
                 if (crc == last_command->crc){
+                    // Sending the ack and setting up a new command takes about
+                    // 55us
+                    fastDebugSet(MSG_RECIEVE_TICK_PIN);
                     commands.add(last_command);
                     queue_time += last_command->segment_time;
                     sendAck(*last_command);
                     resetCharReadTimes();
                     //Serial.print("ACK ");Serial.println(last_command->seq);
                     last_command = new command();
+                    fastDebugClear(MSG_RECIEVE_TICK_PIN);
                     
                 } else {
                     sendNack(*last_command);
@@ -50,9 +63,12 @@ int IDXCommandBuffer::run(){
                 }
            
                 buf_pos = 0;
+                
             }
+            
         }
         endCharRead();
+        fastDebugClear(CMD_RUN_TICK_PIN);
     }
     
     return buf_pos;

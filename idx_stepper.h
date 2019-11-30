@@ -4,8 +4,7 @@
 
 #include <Arduino.h>
 
-#define fastSet(pin) (digitalPinToPort(pin)->PIO_SODR |= digitalPinToBitMask(pin) ) 
-#define fastClear(pin) (digitalPinToPort(pin)->PIO_CODR |= digitalPinToBitMask(pin) )
+#include "fastset.h"
 
 #include <stdlib.h>     /* abs */
 #include <math.h>       /* sqrt and fabs  */
@@ -167,13 +166,11 @@ public:
     }
     
     inline long stepMaybe(uint32_t now){
-        
-
+       
         if ( stepsLeft != 0 && ( (unsigned long)(now - lastTime)   > cn) ) {
-            
             stepAlways(now);
-
         }
+        
         
         return stepsLeft;
     }

@@ -16,13 +16,17 @@
 #define IDX_COMMAND_NACK 0  // Failed to read payload
 #define IDX_COMMAND_ACK 1   // Payload successfully stored in message list
 #define IDX_COMMAND_DONE 2  // Command completed
+#define IDX_COMMAND_EMPTY 3  // Queue is Empty
 #define IDX_COMMAND_APOSITION 10
 #define IDX_COMMAND_RPOSITION 11
 #define IDX_COMMAND_VELOCITY 12
 #define IDX_COMMAND_ACCELERATION 13
 #define IDX_COMMAND_POSITIONQUERY 20
+#define IDX_COMMAND_RESET 21
+#define IDX_COMMAND_STOP 22
 
 #define N_AXES 6
+
 
 // There is a practical minimum of 25 us per step == 40Ks/s
 // If segment time is max of .065s, then max steps per segment is
@@ -132,14 +136,17 @@ public:
     }
     
     inline void startLoop(){
+#ifdef RECORD_LOOP_TIMES
         loop_start = micros();
+#endif
     }
     
     inline void endLoop(){
-        
+#ifdef RECORD_LOOP_TIMES
         uint32_t dt = micros()-loop_start;
         cmd_response.min_loop_time = (uint16_t)min(cmd_response.min_loop_time, dt);
         cmd_response.max_loop_time = (uint16_t)max(cmd_response.max_loop_time, dt);
+#endif
     }
     
     inline void resetLoopTimes(){
@@ -164,14 +171,17 @@ public:
     }
 
     inline void startCharRead(){
+#ifdef RECORD_CHAR_TIMES
         char_start = micros();
+#endif
     }
     
     inline void endCharRead(){
-        
+#ifdef RECORD_CHAR_TIMES
         uint32_t dt = micros()-char_start;
         cmd_response.min_char_read_time = (uint16_t)min(cmd_response.min_char_read_time, dt);
         cmd_response.max_char_read_time = (uint16_t)max(cmd_response.max_char_read_time, dt);
+#endif
     }
     
     inline uint16_t queue_min_seq(){
@@ -192,6 +202,7 @@ public:
         cmd_response.queue_min_seq = queue_min_seq();
         sendResponse(cmd_response, command.seq, IDX_COMMAND_ACK);
     }
+    
 
     inline void sendNack(struct command & command){ 
         cmd_response.queue_size = (uint16_t)size();
@@ -204,6 +215,13 @@ public:
         cmd_response.queue_min_seq = queue_min_seq();
         sendResponse(cmd_response, command.seq, IDX_COMMAND_DONE);
     }
+    
+    inline void sendEmpty(struct command & command){ 
+        cmd_response.queue_size = (uint16_t)size();
+        cmd_response.queue_min_seq = queue_min_seq();
+        sendResponse(cmd_response, command.seq, IDX_COMMAND_EMPTY);
+    }
+    
     
     inline void setPositions(int32_t (&positions)[N_AXES]){
         for (int i = 0; i < N_AXES; i++){
