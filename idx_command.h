@@ -9,21 +9,29 @@
 #include <limits.h>
 #include <LinkedList.h>  // https://github.com/ivanseidel/LinkedList
 #include <CRC32.h>
+#include "idx_stepper.h"
+#include "idx_ringbuffer.h"
 
 // TODO! Consider using COBS for encoding packets
 // https://en.wikipedia.org/wiki/Consistent_Overhead_Byte_Stuffing
 
-#define IDX_COMMAND_NACK 0  // Failed to read payload
-#define IDX_COMMAND_ACK 1   // Payload successfully stored in message list
-#define IDX_COMMAND_DONE 2  // Command completed
-#define IDX_COMMAND_EMPTY 3  // Queue is Empty
-#define IDX_COMMAND_APOSITION 10
-#define IDX_COMMAND_RPOSITION 11
-#define IDX_COMMAND_VELOCITY 12
-#define IDX_COMMAND_ACCELERATION 13
-#define IDX_COMMAND_POSITIONQUERY 20
+#define IDX_RESPONSE_NACK 0  // Failed to read payload
+#define IDX_RESPONSE_ACK 1   // Payload successfully stored in message list
+#define IDX_RESPONSE_DONE 2  // Command completed
+#define IDX_RESPONSE_EMPTY 3  // Queue is Empty
+#define IDX_RESPONSE_RESET 4  // Reset
+#define IDX_RESPONSE_RUNLOAD 5 
+#define IDX_RESPONSE_RUNNING 6  
+#define IDX_RESPONSE_LOADING 7
+#define IDX_RESPONSE_BADCOMMAND 8
+
+#define IDX_COMMAND_SEGMENT 20
+
 #define IDX_COMMAND_RESET 21
 #define IDX_COMMAND_STOP 22
+#define IDX_COMMAND_RUNLOAD 23
+#define IDX_COMMAND_RUN 24
+#define IDX_COMMAND_LOAD 25
 
 #define N_AXES 6
 
@@ -39,12 +47,13 @@ struct command {
     uint16_t code = 0; // command code // 2
     uint16_t pad = 0xBEEF; // padding // 2
     uint32_t segment_time = 0; // total segment time, in microseconds // 4
-    int16_t v0[6] = {0,0,0,0,0,0}; // Initial segment velocity, in steps per second // 12
-    int16_t v1[6] = {0,0,0,0,0,0}; // Final segment velocity // 12
+    uint16_t v0[6] = {0,0,0,0,0,0}; // Initial segment velocity, in steps per second // 12
+    uint16_t v1[6] = {0,0,0,0,0,0}; // Final segment velocity // 12
     int32_t steps[6] = {0,0,0,0,0,0}; // number of steps in segment // 24
 
     uint32_t crc = 0; // Payload CRC // 4
 }; // 64
+
 
 
 struct response {
@@ -65,6 +74,8 @@ struct response {
     
     uint32_t crc = 0; // Payload CRC // 4
 }; // 64
+
+
 
 
 /*
@@ -89,13 +100,13 @@ class IDXCommandBuffer {
 
 private:
 
-    LinkedList<struct command*> commands;
-    
-    struct command *last_command;
+    Ringbuffer<Segment> &segments;
+
+    struct command command;
     
     int buf_pos = 0;
    
-    Serial_ &ser; // SerialUSB on the Arduino Due
+    Stream &ser; // SerialUSB on the Arduino Due
     
     struct response cmd_response = {}; 
     
@@ -108,85 +119,53 @@ private:
     
 public:
     
-    IDXCommandBuffer(Serial_ &ser) : ser(ser) {
-        last_command =  new command();
+    IDXCommandBuffer(Stream &ser, Ringbuffer<Segment> &segments) : ser(ser), segments(segments) {
         
     }
 
     // Wait for a header sync string, then read the entire header. 
     int run();
 
+
     inline int size(){
-        return commands.size();
+        return segments.size();
     }
     
     inline int buflen(){
         return buf_pos;
     }
     
-    inline struct command * getMessage(){
-        if ( size() == 0){
-            return 0 ;
-        }
-        
-        struct command * cmd =  commands.shift();
-        queue_time -= cmd->segment_time;
-        return cmd;
-        
-    }
-    
-    inline void startLoop(){
-#ifdef RECORD_LOOP_TIMES
-        loop_start = micros();
-#endif
-    }
-    
-    inline void endLoop(){
-#ifdef RECORD_LOOP_TIMES
-        uint32_t dt = micros()-loop_start;
-        cmd_response.min_loop_time = (uint16_t)min(cmd_response.min_loop_time, dt);
-        cmd_response.max_loop_time = (uint16_t)max(cmd_response.max_loop_time, dt);
-#endif
-    }
-    
-    inline void resetLoopTimes(){
-        cmd_response.min_loop_time = USHRT_MAX;
-        cmd_response.max_loop_time = 0;
-    }
+
     
     inline void sendResponse(struct response & response, int seq, int code){ 
         
         response.seq = seq;
         response.code = code;  
         response.queue_time = queue_time;
-        //Serial.print("Send #");Serial.print(response.seq);Serial.print(" ");Serial.println(response.code);
+        //Serial.print("Send #");Serial.print(response.seq);
+        //Serial.print(" ");Serial.print((char)response.sync[0]);Serial.print((char)response.sync[1]);
+        //Serial.print(" ");Serial.println(response.code);
         
-        uint32_t crc  = CRC32::checksum( (const uint8_t*)&response, 
-                                     sizeof(response) - sizeof(response.crc));
+        //uint32_t crc  = CRC32::checksum( (const uint8_t*)&response, 
+        //                             sizeof(response) - sizeof(response.crc));
           
-        response.crc = crc;
+        response.crc = 0; //crc;
                                      
         ser.write( (uint8_t*)&response, sizeof(struct response));
 
     }
 
-    inline void startCharRead(){
-#ifdef RECORD_CHAR_TIMES
-        char_start = micros();
-#endif
+    inline void sendResponseCode(uint16_t seq, int code){ 
+        cmd_response.queue_size = (uint16_t)size();
+        cmd_response.queue_min_seq = queue_min_seq();
+        sendResponse(cmd_response, seq, code);
     }
-    
-    inline void endCharRead(){
-#ifdef RECORD_CHAR_TIMES
-        uint32_t dt = micros()-char_start;
-        cmd_response.min_char_read_time = (uint16_t)min(cmd_response.min_char_read_time, dt);
-        cmd_response.max_char_read_time = (uint16_t)max(cmd_response.max_char_read_time, dt);
-#endif
-    }
+
+
     
     inline uint16_t queue_min_seq(){
         if (size() > 0){
-            return (uint16_t)((struct command*)commands.get(0))->seq;
+            return (uint16_t)(segments.tail().seq);
         } else {
             return 0;
         }
@@ -197,29 +176,31 @@ public:
         cmd_response.max_char_read_time = 0;
     }
 
-    inline void sendAck(struct command & command){ 
+    inline void sendAck(uint16_t seq){ 
         cmd_response.queue_size = (uint16_t)size();
         cmd_response.queue_min_seq = queue_min_seq();
-        sendResponse(cmd_response, command.seq, IDX_COMMAND_ACK);
+        sendResponse(cmd_response, seq, IDX_RESPONSE_ACK);
     }
     
 
-    inline void sendNack(struct command & command){ 
+    inline void sendNack(uint16_t seq){ 
         cmd_response.queue_size = (uint16_t)size();
         cmd_response.queue_min_seq = queue_min_seq();
-        sendResponse(cmd_response, command.seq, IDX_COMMAND_NACK);
+        sendResponse(cmd_response, seq, IDX_RESPONSE_NACK);
     }
 
-    inline void sendDone(struct command & command){ 
+    inline void sendDone(uint16_t seq){ 
         cmd_response.queue_size = (uint16_t)size();
         cmd_response.queue_min_seq = queue_min_seq();
-        sendResponse(cmd_response, command.seq, IDX_COMMAND_DONE);
+        sendResponse(cmd_response, seq, IDX_RESPONSE_DONE);
     }
     
-    inline void sendEmpty(struct command & command){ 
+
+    
+    inline void sendEmpty(){ 
         cmd_response.queue_size = (uint16_t)size();
         cmd_response.queue_min_seq = queue_min_seq();
-        sendResponse(cmd_response, command.seq, IDX_COMMAND_EMPTY);
+        sendResponse(cmd_response, 0, IDX_RESPONSE_EMPTY);
     }
     
     

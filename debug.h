@@ -5,8 +5,12 @@
 #ifndef idx_debug_h
 #define idx_debug_h
 
+#if !defined(DEBUG_PRINT_ENABLED) 
 #define DEBUG_PRINT_ENABLED false
+#endif
+#if !defined(DEBUG_TICK_ENABLED) 
 #define DEBUG_TICK_ENABLED false
+#endif
 
 // Set to True to record the time required to read characters
 // from the serial port
@@ -27,6 +31,10 @@
 
 #define EXTRA_DEBUG_TICK_PIN 22
 
+#define SP(x) Serial.print(x);Serial.print(' ');
+#define SPT(x) Serial.print(x);Serial.print('\t');
+#define NL Serial.println(' ');
+
 #if(DEBUG_TICK_ENABLED)
   #define fastDebugSet(pin) fastSet(pin)  
   #define fastDebugClear(pin) fastClear(pin) 
@@ -42,6 +50,23 @@ inline void init_debug(){
     pinMode(MSG_RECIEVE_TICK_PIN, OUTPUT); 
     pinMode(EXTRA_DEBUG_TICK_PIN, OUTPUT);
 }
+
+/*inline void debug_print(){
+  #if(DEBUG_PRINT_ENABLED)
+  Serial.print("Start#"); Serial.print(msg->seq); 
+  Serial.print(" T="); Serial.print(millis()); 
+  Serial.print(" dT="); Serial.print(millis()-last_time); 
+  Serial.print(" ql="); Serial.print(cbuf.size()); 
+  Serial.print(" qt="); Serial.print(cbuf.getQueueTime()); 
+  Serial.print(" st="); Serial.print(msg->segment_time);
+  Serial.print(" v0="); Serial.print(msg->v0[0]);
+  Serial.print(" v1="); Serial.print(msg->v1[0]);
+  Serial.print(" x="); Serial.print(msg->steps[0]);
+  //Serial.print(" crc=");Serial.print(msg->crc); 
+  Serial.println(" ");
+  #endif
+}*/
+
 #else
   #define fastDebugSet(pin) ;
   #define fastDebugClear(pin) ;

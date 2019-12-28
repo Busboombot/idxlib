@@ -16,7 +16,7 @@
 
 
 /* Quarature Encoder Class. Represents one axis. */
-class QuadratureGenerator : public IDXStepGenerator {
+class QuadratureGenerator  {
 
   private:
 
@@ -26,6 +26,9 @@ class QuadratureGenerator : public IDXStepGenerator {
     uint8_t l_pin;
 
     int index_pos = 0;
+    Direction direction;
+    int axis_n;
+    int position;
 
     int8_t steps[4] = {2, 3, 1, 0};
 
@@ -38,7 +41,7 @@ class QuadratureGenerator : public IDXStepGenerator {
 
     inline QuadratureGenerator(uint8_t axis_n, uint8_t a_pin, uint8_t b_pin, uint8_t i_pin, uint8_t l_pin,
                                int limit_offset=0)
-      : a_pin(a_pin), b_pin(b_pin), i_pin(i_pin), l_pin(l_pin), limit_offset(limit_offset), IDXStepGenerator(axis_n){
+      : a_pin(a_pin), b_pin(b_pin), i_pin(i_pin), l_pin(l_pin), limit_offset(limit_offset), axis_n(axis_n){
 
       pinMode(a_pin, OUTPUT);
       pinMode(b_pin, OUTPUT);

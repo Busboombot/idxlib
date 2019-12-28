@@ -9,21 +9,19 @@
 #include "debug.h"
 
 
+
 // Wait for a header sync string, then read the entire header. 
 int IDXCommandBuffer::run(){
-
-    
+   
     if(ser.available()){
-        fastDebugSet(CMD_RUN_TICK_PIN);
-        startCharRead();
-        
+    
         char c =  ser.read();
         
-        if (buf_pos < sizeof(last_command->sync)) {
+        if (buf_pos < sizeof(command.sync)) {
             // When reading the sync string, ensure that each additional char in 
             // the buffer equals the one in the same position in the sync str. 
             // If not, the characters read so far aren't sync chars, so start over. 
-            if ( c == last_command->sync[buf_pos] ){
+            if ( c == command.sync[buf_pos] ){
                 buf_pos++;
                 
             } else{
@@ -32,48 +30,60 @@ int IDXCommandBuffer::run(){
        
         } else {
             
-            *(char*)(((char*)last_command)+buf_pos) = c;
+            *(char*)(((char*)&command)+buf_pos) = c;
             
             buf_pos++;
             
             if (buf_pos == sizeof(struct command)){
                 // This section is slow, about 90us on a Due
                 
-               
+               fastSet(LOOP_CLEAR_TICK_PIN);
                 // Computing the CRC takes about 30us
-                uint32_t crc  = CRC32::checksum( (const uint8_t*)last_command, 
-                                                 sizeof(*last_command) - sizeof(last_command->crc));
+                uint32_t crc  = CRC32::checksum( (const uint8_t*)&command, 
+                                                 sizeof(command) - sizeof(command.crc));
                 
-                 
-                if (crc == last_command->crc){
+                if (crc == command.crc){
                     // Sending the ack and setting up a new command takes about
                     // 55us
-                    fastDebugSet(MSG_RECIEVE_TICK_PIN);
-                    commands.add(last_command);
-                    queue_time += last_command->segment_time;
-                    sendAck(*last_command);
-                    resetCharReadTimes();
-                    //Serial.print("ACK ");Serial.println(last_command->seq);
-                    last_command = new command();
-                    fastDebugClear(MSG_RECIEVE_TICK_PIN);
+
+                    queue_time += command.segment_time;
+                    sendAck(command.seq);
+                    
+                    if (command.code == IDX_COMMAND_SEGMENT){
+                        Segment& segment = segments.head_next();
+                        
+                        for (int axis = 0; axis < N_AXES; axis++){
+                            segment.axes[axis].setParams(command.segment_time, command.v0[axis], command.v1[axis], command.steps[axis]);
+                        }
+                  
+                        segment.seq = command.seq;
+                        segment.code = command.code;
+                        segment.segment_time = command.segment_time;
+                        
+
+                        
+                    } else {
+                        // It's some other command! TODO handle it. 
+                    }
+                    
+ 
+                    
                     
                 } else {
-                    sendNack(*last_command);
-                    //Serial.print("NACK ");Serial.println(last_command->seq);
+                    sendNack(command.seq);
+                    
                 }
            
                 buf_pos = 0;
-                
+             
+                fastClear(LOOP_CLEAR_TICK_PIN);   
             }
             
-        }
-        endCharRead();
-        fastDebugClear(CMD_RUN_TICK_PIN);
+        }    
     }
     
     return buf_pos;
 }
-
 
 
 // From Wikipedia: https://en.wikipedia.org/wiki/Fletcher%27s_checksum
