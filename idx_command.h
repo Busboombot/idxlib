@@ -119,6 +119,9 @@ private:
     
 public:
     
+    bool loading = true;
+    bool running = true;
+    
     IDXCommandBuffer(Stream &ser, Ringbuffer<Segment> &segments) : ser(ser), segments(segments) {
         
     }

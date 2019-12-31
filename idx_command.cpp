@@ -6,9 +6,8 @@
 #include "CRC32.h"
 #include "fastset.h"
 
+#define DEBUG_PRINT_ENABLED false
 #include "debug.h"
-
-
 
 // Wait for a header sync string, then read the entire header. 
 int IDXCommandBuffer::run(){
@@ -61,11 +60,40 @@ int IDXCommandBuffer::run(){
                         segment.segment_time = command.segment_time;
                         
 
+                        //SPT("MSG:");SPT(segment.seq); SPT(segments.start); NL;
                         
-                    } else {
-                        // It's some other command! TODO handle it. 
-                    }
+                    } else if (command.code == IDX_COMMAND_RESET){
+                        #if(DEBUG_PRINT_ENABLED)
+                        SPT("RESET");SPT(command.seq); NL;
+                        #endif
+                        /// TBD
+                        sendResponseCode(command.seq, IDX_RESPONSE_RESET);
+                        
+                    } else if (command.code == IDX_COMMAND_LOAD){
+                        #if(DEBUG_PRINT_ENABLED)
+                        SPT("LOAD");SPT(command.seq); NL;
+                        #endif
+                        running = false;
+                        loading = true;
+                        sendResponseCode(command.seq, IDX_RESPONSE_LOADING);
+                        
+                    } else if (command.code == IDX_COMMAND_RUN){
+                        #if(DEBUG_PRINT_ENABLED)
+                        SPT("RUN");SPT(command.seq); NL;
+                        #endif                        
+                        running = true;
+                        loading = false;
+                        sendResponseCode(command.seq, IDX_RESPONSE_RUNNING);
+                        
+                    } else if (command.code == IDX_COMMAND_RUNLOAD){
+                        #if(DEBUG_PRINT_ENABLED)
+                        SPT("RUNLOAD");SPT(command.seq); NL;
+                        #endif
+                        running = true;
+                        loading = true;
+                        sendResponseCode(command.seq, IDX_RESPONSE_RUNLOAD);
                     
+                    } 
  
                     
                     

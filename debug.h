@@ -51,21 +51,6 @@ inline void init_debug(){
     pinMode(EXTRA_DEBUG_TICK_PIN, OUTPUT);
 }
 
-/*inline void debug_print(){
-  #if(DEBUG_PRINT_ENABLED)
-  Serial.print("Start#"); Serial.print(msg->seq); 
-  Serial.print(" T="); Serial.print(millis()); 
-  Serial.print(" dT="); Serial.print(millis()-last_time); 
-  Serial.print(" ql="); Serial.print(cbuf.size()); 
-  Serial.print(" qt="); Serial.print(cbuf.getQueueTime()); 
-  Serial.print(" st="); Serial.print(msg->segment_time);
-  Serial.print(" v0="); Serial.print(msg->v0[0]);
-  Serial.print(" v1="); Serial.print(msg->v1[0]);
-  Serial.print(" x="); Serial.print(msg->steps[0]);
-  //Serial.print(" crc=");Serial.print(msg->crc); 
-  Serial.println(" ");
-  #endif
-}*/
 
 #else
   #define fastDebugSet(pin) ;

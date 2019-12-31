@@ -18,6 +18,7 @@
 
   #define fastSet(pin) (digitalFastWrite2(pin, HIGH))
   #define fastClear(pin) (digitalFastWrite2(pin, LOW))
+  
 #endif
 
 #endif // idx_fastset_h

@@ -2,6 +2,9 @@
 #include "idx_stepper.h"
 #include "debug.h"
 
+#include <FixedPoints.h>
+#include <FixedPointsCommon.h>
+
 void IDXStepperState::setParams(uint32_t segment_time, Direction direction, long n, unsigned long ca, int32_t x ){
     
     t = ((float)segment_time)/TIMEBASE;
@@ -11,6 +14,8 @@ void IDXStepperState::setParams(uint32_t segment_time, Direction direction, long
     this->direction = direction;
     
 }
+
+
 
 void IDXStepperState::setParams(uint32_t segment_time, int32_t v0, int32_t v1, long x){
     // One of the parameters -- v, t or x, can be derived from the other 
@@ -35,28 +40,35 @@ void IDXStepperState::setParams(uint32_t segment_time, int32_t v0, int32_t v1, l
         n = 0;
         cn = 0;
       
-    } else if (v0==0) {
-        // Starting from a stop, so always accelerating in one dir or the 
-        // other
-        v1  = MAX((float)v1,MIN_VELOCITY);
-
-        a = fabs(v1) / t;
-        n = 0; // n will always be positive, so accelerating
-        cn = 0.676 * sqrt(2.0 / fabs(a)) * ((float)TIMEBASE); // c0 in Equation 15
-       
     } else if (v0 == v1){
         // Both velocities are the same, so constant speed motion
         a = 0;
         n = N_BIG;
         
-        v0  = MAX((float)v0,MIN_VELOCITY);
+        v0  = MAX( ((float)v0), MIN_VELOCITY);
         
         cn = ((float)TIMEBASE) / fabs(v0);
       
-    } else {
+    } else  {
         
-        v0  = MAX((float)v0,MIN_VELOCITY);
-        v1  = MAX((float)v1,MIN_VELOCITY);
+        /* This is the normal case for v0 == 0, 
+           but we are limiting the minimum to MIN_VELOCITY, 
+           so the case never  gets used */
+        /*
+        if (v0 == 0){
+            
+            // Starting from a stop, so always accelerating in one dir or the 
+            // other
+            v1  = FORCE(v1);
+
+            a = fabs(v1) / t;
+            n = 0; // n will always be positive, so accelerating
+            cn = 0.676 * sqrt(2.0 / fabs(a)) * ((float)TIMEBASE); // c0 in Equation 
+        }   
+        */
+ 
+        v0  = MAX( ((float)v0), MIN_VELOCITY);
+        v1  = MAX( ((float)v1), MIN_VELOCITY);
         
         // Normal acceleration case
         a = fabs(v1-v0) / t;
@@ -70,6 +82,7 @@ void IDXStepperState::setParams(uint32_t segment_time, int32_t v0, int32_t v1, l
         }  
     }
     
+
     if (x > 0){
         direction = CW;
     } else if (x < 0){
@@ -88,48 +101,45 @@ void IDXStepperState::setParams(uint32_t segment_time, int32_t v0, int32_t v1, l
     
     ca =  (long) cn*(1<<FP_BITS);
 
+    delay = ca>>FP_BITS;
+
+    lastTime = micros();
 }
 
-long IDXStepperState::stepMaybe(uint32_t now,  IDXStepInterface& stepper){
+long IDXStepperState::stepMaybe(uint32_t now,  IDXStepInterface& stepper,int &activeAxes ){
    
     // Shifting by FP_BITS+1 to take 1/2 of the time delay; the other half 
     // is for clearing the bit. 
 
-    if ( stepsLeft !=0 && ( (unsigned long)(now - lastTime)   > (ca>>(FP_BITS+1)) ) ) {
+    if ( stepsLeft !=0 && ( (unsigned long)(now - lastTime)   >  delay ) ) {
+        
+        long ca1;
+    
+        if (n != N_BIG){ // No need to update ca if velocity is constant
+            n++;
+            ca1 = ( (ca*2) / ((n*4) + 1));
+            ca = ca - ca1;
+            delay = ca>>FP_BITS;
+        }
         
         if (pinState){
-            if (n != N_BIG){ // No need to update ca if velocity is constant
-                int ca1 = ( (ca<<1) / (n<<2 + 1));
-                
-                // Keep it positive
-                if (ca > ca1){
-                    ca =  ca - ca1;
-                } else {
-                    ca =  ca1 - ca;
-                }
-                
-                n++;
-              
-            }
-
-            stepsLeft--;
-        
             stepper.writeStep();
-            
             pinState = false;
-            
-            lastTime = micros();
+            stepsLeft--;
         } else {
-
             stepper.clearStep();
-        
             pinState = true;
-            
-            lastTime = micros();
         }
-
+        
+        if (lastTime == 0) {
+            lastTime = now;
+        } else {
+            lastTime = now; // = now; 
+        }
     } 
     
+    if (stepsLeft)
+        activeAxes += 1;
     
     return stepsLeft;
 }

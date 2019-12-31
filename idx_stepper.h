@@ -10,6 +10,9 @@
 #include <math.h>       /* sqrt and fabs  */
 #include <limits.h>     /* LONG_MAX */
 
+#include <FixedPoints.h>
+#include <FixedPointsCommon.h>
+
 typedef enum
 {
     CCW = -1,  ///< Clockwise
@@ -20,25 +23,19 @@ typedef enum
 #define MIN(a,b) (((a)<(b))?(a):(b))
 #define MAX(a,b) (((a)>(b))?(a):(b))
 
-// Minimum non zero velocity
-// The largest values for  cn are at very low speeds. A speed of 1 pulse/sec
-// results in an initial cn of about 1M for a timebase of microsecs, 
-// or 1B for a timebase of nanoseconds.  If the time base is limited to 
-// usecs, and the minimum speed is 1 RPM with 10usteps, the min pulse rate is 
-// 33 pulse/sec, which results in a max cn of 30K and requires 15 bits.
-// If the minimum rate for a usec timebase is 12 step/sec, we need to reserve 
-// 16 bits. 
+// Minimum non zero velocity of 1 RPM @ 10µsteps is 40 pulse/sec,
+// or a delay of 6,400,000 𝛍sec, which requires 23 bits. A min of 80 pulse/sec
+// requires 23 bits.  With 8 bits fixed, this leave 31 bits, so we can 
+// fit into a signed long. 
 
-// TODO. 16 bits is sufficient to hold the base delay rate, so the command
-// messages could have 16 bits. 
 
 #define MIN_VELOCITY 40 // Steps per second
 
 // Number of bits in ca to use for the fixed-point fraction portion.  
 #define FP_BITS 8
 
-// 2,000 rpm for a 1.8deg stepper is 400,000 steps per min, 7K steps per sec
-// For a 10 ustep driver, 70KHz step pulse. 
+// 2,000 rpm for a 1.8deg stepper is 400,000 steps per min, 7K steps 
+// per sec. For a 10 ustep driver, 70KHz step pulse. 
 
 // A Big n for small a.
 #define N_BIG LONG_MAX
@@ -78,12 +75,15 @@ public:
     }
     
     inline void enable(Direction dir){
-        fastClear(enablePin);  // Active low 
+        if(dir != STOP){
+            fastClear(enablePin);  // Active low 
+        }
         setDirection(dir);
     }
     
     inline void disable(){
         fastSet(enablePin); // Active low
+        setDirection(STOP);
     }
     
     inline void setDirection(Direction dir){
@@ -103,8 +103,11 @@ class IDXStepperState {
     
 public: 
     
-    long n=0;
-    unsigned long ca=0;     
+    long n=0; // Step delay number, part of the step algorithm
+
+    long ca=0;     // Step delay, in fixed point format
+    
+    unsigned long delay; // 1/2 Step delay, shifted portion ( ca<<(FP_BITS+1)) 
     
     Direction direction=STOP; 
 
@@ -127,7 +130,7 @@ public:
         
     void setParams(uint32_t segment_time, int32_t v0_, int32_t v1_, long x);
         
-    long stepMaybe(uint32_t now, IDXStepInterface& stepper);
+    long stepMaybe(uint32_t now, IDXStepInterface& stepper, int &activeAxes );
         
 };
 
