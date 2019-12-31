@@ -46,6 +46,7 @@ class IDXStepInterface {
     
 protected:
     
+    uint8_t axis_n;
     bool pinState = true;
     
     uint8_t stepPin;
@@ -54,8 +55,8 @@ protected:
 
 public:
     
-    inline IDXStepInterface(uint8_t axis_n, uint8_t stepPin, uint8_t directionPin, uint8_t enablePin): 
-    stepPin(stepPin), directionPin(directionPin), enablePin(enablePin) {
+    inline IDXStepInterface(uint8_t axis_n, uint8_t stepPin, uint8_t directionPin, 
+     uint8_t enablePin): axis_n(axis_n), stepPin(stepPin), directionPin(directionPin), enablePin(enablePin) {
         pinMode(stepPin, OUTPUT);
         pinMode(directionPin, OUTPUT);
         pinMode(enablePin, OUTPUT);
@@ -69,6 +70,9 @@ public:
         fastClear(stepPin);
     }
     
+    inline void setMaskBit(uint8_t &mask){
+        mask |= 1<<axis_n;
+    }
     
     inline void enable(){
         fastClear(enablePin);  // Active low 
@@ -111,7 +115,7 @@ public:
     
     Direction direction=STOP; 
 
-    int32_t stepsLeft=0;
+    unsigned long stepsLeft=0;
     
     float t=0;
    
@@ -130,7 +134,7 @@ public:
         
     void setParams(uint32_t segment_time, int32_t v0_, int32_t v1_, long x);
         
-    long stepMaybe(uint32_t now, IDXStepInterface& stepper, int &activeAxes );
+    unsigned long stepMaybe(uint32_t now, IDXStepInterface& stepper, uint8_t& mask);
         
 };
 

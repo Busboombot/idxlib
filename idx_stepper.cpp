@@ -31,7 +31,6 @@ void IDXStepperState::setParams(uint32_t segment_time, int32_t v0, int32_t v1, l
             
     stepsLeft = abs(x);
     
-
     t = ((float)segment_time)/((float)TIMEBASE);
     
     if (v0==0 && v1==0){
@@ -101,12 +100,14 @@ void IDXStepperState::setParams(uint32_t segment_time, int32_t v0, int32_t v1, l
     
     ca =  (long) cn*(1<<FP_BITS);
 
-    delay = ca>>FP_BITS;
+    delay = (long)cn;
+    
+    SPT(delay); NL;
 
     lastTime = micros();
 }
 
-long IDXStepperState::stepMaybe(uint32_t now,  IDXStepInterface& stepper,int &activeAxes ){
+unsigned long IDXStepperState::stepMaybe(uint32_t now,  IDXStepInterface& stepper, uint8_t& mask ){
    
     // Shifting by FP_BITS+1 to take 1/2 of the time delay; the other half 
     // is for clearing the bit. 
@@ -122,24 +123,13 @@ long IDXStepperState::stepMaybe(uint32_t now,  IDXStepInterface& stepper,int &ac
             delay = ca>>FP_BITS;
         }
         
-        if (pinState){
-            stepper.writeStep();
-            pinState = false;
-            stepsLeft--;
-        } else {
-            stepper.clearStep();
-            pinState = true;
-        }
+        //stepper.writeStep();
+        stepper.setMaskBit(mask);
+        stepsLeft--;
         
-        if (lastTime == 0) {
-            lastTime = now;
-        } else {
-            lastTime = now; // = now; 
-        }
+        lastTime = now; // = now; 
+       
     } 
-    
-    if (stepsLeft)
-        activeAxes += 1;
-    
+
     return stepsLeft;
 }

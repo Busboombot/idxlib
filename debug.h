@@ -20,16 +20,16 @@
 #define RECORD_LOOP_TIMES false
 
 // Debug tick pins
-#define LOOP_COMM_TICK_PIN 14 
-#define LOOP_CLEAR_TICK_PIN 15 
-#define LOOP_STEP_TICK_PIN 16 
-#define PARAMS_TICK_PIN 17
-#define STARVED_TICK_PIN 18
-#define RESPONSE_TICK_PIN 19
-#define CMD_RUN_TICK_PIN 20 
-#define MSG_RECIEVE_TICK_PIN 21 
+#define LOOP_COMM_TICK_PIN 54
+#define LOOP_CLEAR_TICK_PIN 55 
+#define LOOP_STEP_TICK_PIN 56
+#define PARAMS_TICK_PIN 57
+#define STARVED_TICK_PIN 58
+#define RESPONSE_TICK_PIN 59
+#define CMD_RUN_TICK_PIN 61 
+#define MSG_RECIEVE_TICK_PIN 62 
 
-#define EXTRA_DEBUG_TICK_PIN 22
+#define EXTRA_DEBUG_TICK_PIN 63
 
 #define SP(x) Serial.print(x);Serial.print(' ');
 #define SPT(x) Serial.print(x);Serial.print('\t');
